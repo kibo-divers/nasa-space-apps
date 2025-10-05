@@ -1,0 +1,90 @@
+/* Intro Styles */
+#intro-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: black;
+  color: white;
+  z-index: 1000;
+  overflow-y: auto;
+  scroll-behavior: smooth;
+  transition: opacity 1.5s ease-in-out;
+}
+
+#intro-container.fade-out {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.intro-panel {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 2rem;
+  text-align: center;
+  opacity: 0;
+  transform: translateY(20px);
+  transition: opacity 1s ease, transform 1s ease;
+}
+
+.intro-panel.active {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.intro-panel h1 {
+  font-size: 3.5rem;
+  margin-bottom: 1.5rem;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+}
+
+.intro-panel p {
+  font-size: 1.5rem;
+  max-width: 800px;
+  line-height: 1.6;
+  margin-bottom: 1rem;
+  font-weight: 300;
+}
+
+.intro-panel .highlight {
+  color: #ffd700;
+  font-weight: 600;
+}
+
+.scroll-hint {
+  position: absolute;
+  bottom: 30px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 1rem;
+  opacity: 0.7;
+  animation: bounce 2s infinite;
+}
+
+@keyframes bounce {
+  0%, 20%, 50%, 80%, 100% {
+    transform: translateX(-50%) translateY(0);
+  }
+  40% {
+    transform: translateX(-50%) translateY(-10px);
+  }
+  60% {
+    transform: translateX(-50%) translateY(-5px);
+  }
+}
+
+/* Hide main content initially */
+#main-content {
+  opacity: 0;
+  transition: opacity 1.5s ease-in-out;
+}
+
+#main-content.fade-in {
+  opacity: 1;
+}
