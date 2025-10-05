@@ -15,9 +15,9 @@ const OrbitSimulator = () => {
   const sceneRef = useRef(null);
   const animationRef = useRef(null);
 
-  // Calculate mass from asteroid size (assuming density of 3000 kg/m³)
+  // Calculate mass from asteroid size
   const calculateMass = (size) => {
-    const density = 3000; // kg/m³
+    const density = 3000;
     const radius = size / 2;
     const volume = (4/3) * Math.PI * Math.pow(radius, 3);
     return density * volume;
@@ -67,10 +67,82 @@ const OrbitSimulator = () => {
     }
   };
 
-  // Simple orbit controls
+  // Create realistic Earth material
+  const createEarthMaterial = () => {
+    // Create a simple blue-green gradient material
+    const canvas = document.createElement('canvas');
+    canvas.width = 512;
+    canvas.height = 256;
+    const context = canvas.getContext('2d');
+    
+    // Create Earth-like texture
+    const gradient = context.createLinearGradient(0, 0, canvas.width, canvas.height);
+    gradient.addColorStop(0, '#1a5276');  // Deep ocean
+    gradient.addColorStop(0.3, '#2980b9'); // Ocean
+    gradient.addColorStop(0.5, '#27ae60'); // Land
+    gradient.addColorStop(0.7, '#229954'); // Forest
+    gradient.addColorStop(1, '#1d8348');  // Dark land
+    
+    context.fillStyle = gradient;
+    context.fillRect(0, 0, canvas.width, canvas.height);
+    
+    // Add some cloud-like patterns
+    context.fillStyle = 'rgba(255, 255, 255, 0.3)';
+    for (let i = 0; i < 20; i++) {
+      const x = Math.random() * canvas.width;
+      const y = Math.random() * canvas.height;
+      const size = 10 + Math.random() * 30;
+      context.beginPath();
+      context.arc(x, y, size, 0, Math.PI * 2);
+      context.fill();
+    }
+    
+    const texture = new THREE.CanvasTexture(canvas);
+    return new THREE.MeshPhongMaterial({
+      map: texture,
+      specular: new THREE.Color(0x333333),
+      shininess: 10
+    });
+  };
+
+  // Create asteroid material with surface detail
+  const createAsteroidMaterial = () => {
+    const canvas = document.createElement('canvas');
+    canvas.width = 256;
+    canvas.height = 256;
+    const context = canvas.getContext('2d');
+    
+    // Rocky asteroid texture
+    context.fillStyle = '#8B4513';
+    context.fillRect(0, 0, canvas.width, canvas.height);
+    
+    // Add crater-like details
+    context.fillStyle = '#654321';
+    for (let i = 0; i < 50; i++) {
+      const x = Math.random() * canvas.width;
+      const y = Math.random() * canvas.height;
+      const size = 2 + Math.random() * 8;
+      context.beginPath();
+      context.arc(x, y, size, 0, Math.PI * 2);
+      context.fill();
+    }
+    
+    const texture = new THREE.CanvasTexture(canvas);
+    return new THREE.MeshPhongMaterial({
+      map: texture,
+      bumpMap: texture,
+      bumpScale: 0.05,
+      specular: new THREE.Color(0x222222),
+      shininess: 5
+    });
+  };
+
+  // Enhanced orbit controls with smooth damping
   const setupOrbitControls = (camera, canvas) => {
     let isDragging = false;
     let previousMousePosition = { x: 0, y: 0 };
+    let targetRotation = { x: 0, y: 0 };
+    let currentRotation = { x: 0, y: 0 };
     
     const onMouseDown = (event) => {
       isDragging = true;
@@ -84,9 +156,9 @@ const OrbitSimulator = () => {
       const deltaX = event.clientX - previousMousePosition.x;
       const deltaY = event.clientY - previousMousePosition.y;
       
-      camera.rotation.y += deltaX * 0.01;
-      camera.rotation.x += deltaY * 0.01;
-      camera.rotation.x = Math.max(-Math.PI/2, Math.min(Math.PI/2, camera.rotation.x));
+      targetRotation.y += deltaX * 0.01;
+      targetRotation.x += deltaY * 0.01;
+      targetRotation.x = Math.max(-Math.PI/2, Math.min(Math.PI/2, targetRotation.x));
       
       previousMousePosition = { x: event.clientX, y: event.clientY };
     };
@@ -98,7 +170,7 @@ const OrbitSimulator = () => {
     
     const onWheel = (event) => {
       camera.position.z += event.deltaY * 0.01;
-      camera.position.z = Math.max(3, Math.min(15, camera.position.z));
+      camera.position.z = Math.max(3, Math.min(20, camera.position.z));
     };
     
     canvas.addEventListener('mousedown', onMouseDown);
@@ -106,45 +178,75 @@ const OrbitSimulator = () => {
     canvas.addEventListener('mouseup', onMouseUp);
     canvas.addEventListener('wheel', onWheel);
     
-    return () => {
+    // Smooth rotation update in animation loop
+    const updateRotation = () => {
+      const damping = 0.1;
+      currentRotation.x += (targetRotation.x - currentRotation.x) * damping;
+      currentRotation.y += (targetRotation.y - currentRotation.y) * damping;
+      
+      camera.rotation.x = currentRotation.x;
+      camera.rotation.y = currentRotation.y;
+    };
+    
+    return { updateRotation, cleanup: () => {
       canvas.removeEventListener('mousedown', onMouseDown);
       canvas.removeEventListener('mousemove', onMouseMove);
       canvas.removeEventListener('mouseup', onMouseUp);
       canvas.removeEventListener('wheel', onWheel);
-    };
+    }};
   };
 
-  // Initialize Three.js scene
+  // Initialize enhanced Three.js scene
   const initScene = () => {
     if (!canvasRef.current) return;
 
     try {
       const scene = new THREE.Scene();
-      const camera = new THREE.PerspectiveCamera(75, canvasRef.current.clientWidth / canvasRef.current.clientHeight, 0.1, 1000);
+      scene.background = new THREE.Color(0x000011);
+      
+      const camera = new THREE.PerspectiveCamera(60, canvasRef.current.clientWidth / canvasRef.current.clientHeight, 0.1, 1000);
       const renderer = new THREE.WebGLRenderer({ 
-        antialias: false,
-        alpha: true
+        antialias: true,
+        alpha: false
       });
       
       renderer.setSize(canvasRef.current.clientWidth, canvasRef.current.clientHeight);
-      renderer.setClearColor(0x000000, 0);
+      renderer.setClearColor(0x000011, 1);
+      renderer.shadowMap.enabled = true;
+      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
       canvasRef.current.innerHTML = '';
       canvasRef.current.appendChild(renderer.domElement);
 
-      // Create Earth with wireframe
-      const earthGeometry = new THREE.SphereGeometry(1.5, 12, 10);
-      const earthMaterial = new THREE.MeshBasicMaterial({ 
-        color: 0xffffff,
-        wireframe: true
-      });
-      const earth = new THREE.Mesh(earthGeometry, earthMaterial);
+      // Enhanced lighting
+      const ambientLight = new THREE.AmbientLight(0x333333, 0.4);
+      scene.add(ambientLight);
+      
+      const mainLight = new THREE.DirectionalLight(0xffffff, 1);
+      mainLight.position.set(10, 10, 10);
+      mainLight.castShadow = true;
+      mainLight.shadow.mapSize.width = 2048;
+      mainLight.shadow.mapSize.height = 2048;
+      scene.add(mainLight);
+      
+      const fillLight = new THREE.DirectionalLight(0x4466ff, 0.3);
+      fillLight.position.set(-5, -5, -5);
+      scene.add(fillLight);
+
+      // Create enhanced Earth
+      const earthGeometry = new THREE.SphereGeometry(2, 64, 64);
+      const earth = new THREE.Mesh(earthGeometry, createEarthMaterial());
+      earth.castShadow = true;
+      earth.receiveShadow = true;
       scene.add(earth);
 
-      // Create orbit path
+      // Create detailed orbit path with glow effect
+      const orbitGroup = new THREE.Group();
+      
+      // Main orbit line
       const orbitPoints = [];
-      const orbitRadius = 3;
-      for (let i = 0; i <= 48; i++) {
-        const angle = (i / 48) * Math.PI * 2;
+      const orbitRadius = 4;
+      for (let i = 0; i <= 128; i++) {
+        const angle = (i / 128) * Math.PI * 2;
         orbitPoints.push(new THREE.Vector3(
           Math.cos(angle) * orbitRadius,
           0,
@@ -152,31 +254,96 @@ const OrbitSimulator = () => {
         ));
       }
       const orbitGeometry = new THREE.BufferGeometry().setFromPoints(orbitPoints);
-      const orbitMaterial = new THREE.LineBasicMaterial({ color: 0xffffff });
-      const orbit = new THREE.Line(orbitGeometry, orbitMaterial);
-      scene.add(orbit);
-
-      // Create asteroid
-      const asteroidGeometry = new THREE.BoxGeometry(0.15, 0.15, 0.15);
-      const asteroidMaterial = new THREE.MeshBasicMaterial({ 
-        color: 0xff2222,
-        wireframe: true
+      const orbitMaterial = new THREE.LineBasicMaterial({ 
+        color: 0x4488ff,
+        transparent: true,
+        opacity: 0.6
       });
-      const asteroid = new THREE.Mesh(asteroidGeometry, asteroidMaterial);
+      const orbit = new THREE.Line(orbitGeometry, orbitMaterial);
+      orbitGroup.add(orbit);
+      
+      // Dashed guide orbit
+      const dashedOrbitMaterial = new THREE.LineDashedMaterial({
+        color: 0x888888,
+        dashSize: 0.2,
+        gapSize: 0.1,
+        transparent: true,
+        opacity: 0.3
+      });
+      const dashedOrbit = new THREE.Line(orbitGeometry, dashedOrbitMaterial);
+      dashedOrbit.computeLineDistances();
+      orbitGroup.add(dashedOrbit);
+      
+      scene.add(orbitGroup);
+
+      // Create detailed asteroid with irregular shape
+      const asteroidGeometry = new THREE.SphereGeometry(0.2, 32, 32);
+      // Make asteroid irregular
+      const positions = asteroidGeometry.attributes.position.array;
+      for (let i = 0; i < positions.length; i += 3) {
+        const variation = 0.1;
+        positions[i] += (Math.random() - 0.5) * variation;
+        positions[i + 1] += (Math.random() - 0.5) * variation;
+        positions[i + 2] += (Math.random() - 0.5) * variation;
+      }
+      asteroidGeometry.attributes.position.needsUpdate = true;
+      asteroidGeometry.computeVertexNormals();
+      
+      const asteroid = new THREE.Mesh(asteroidGeometry, createAsteroidMaterial());
+      asteroid.castShadow = true;
+      asteroid.receiveShadow = true;
+      
+      // Add asteroid glow/trail
+      const asteroidGlowGeometry = new THREE.SphereGeometry(0.25, 16, 16);
+      const asteroidGlowMaterial = new THREE.MeshBasicMaterial({
+        color: 0xff4422,
+        transparent: true,
+        opacity: 0.2
+      });
+      const asteroidGlow = new THREE.Mesh(asteroidGlowGeometry, asteroidGlowMaterial);
+      asteroid.add(asteroidGlow);
+      
       scene.add(asteroid);
 
-      camera.position.z = 6;
+      // Add stars background
+      const starsGeometry = new THREE.BufferGeometry();
+      const starsMaterial = new THREE.PointsMaterial({
+        color: 0xffffff,
+        size: 0.1,
+        transparent: true
+      });
+      
+      const starsVertices = [];
+      for (let i = 0; i < 1000; i++) {
+        const radius = 20 + Math.random() * 30;
+        const theta = Math.random() * Math.PI * 2;
+        const phi = Math.acos(2 * Math.random() - 1);
+        
+        starsVertices.push(
+          radius * Math.sin(phi) * Math.cos(theta),
+          radius * Math.sin(phi) * Math.sin(theta),
+          radius * Math.cos(phi)
+        );
+      }
+      
+      starsGeometry.setAttribute('position', new THREE.Float32BufferAttribute(starsVertices, 3));
+      const stars = new THREE.Points(starsGeometry, starsMaterial);
+      scene.add(stars);
 
-      const cleanupControls = setupOrbitControls(camera, renderer.domElement);
+      camera.position.z = 8;
+
+      const controls = setupOrbitControls(camera, renderer.domElement);
 
       sceneRef.current = { 
         scene, 
         camera, 
         renderer, 
         earth, 
-        orbit, 
+        orbit: orbitGroup, 
         asteroid,
-        cleanupControls 
+        stars,
+        controls,
+        orbitRadius
       };
       
       animateAsteroid();
@@ -185,27 +352,47 @@ const OrbitSimulator = () => {
     }
   };
 
-  // Animate asteroid
+  // Enhanced animation with trail effect
   const animateAsteroid = () => {
     if (!sceneRef.current) return;
 
-    const { scene, camera, renderer, asteroid, orbit } = sceneRef.current;
+    const { scene, camera, renderer, earth, asteroid, controls, orbitRadius } = sceneRef.current;
     
-    orbit.rotation.z = inclination * Math.PI / 180;
+    // Update controls
+    if (controls && controls.updateRotation) {
+      controls.updateRotation();
+    }
     
+    // Rotate Earth slowly
+    earth.rotation.y += 0.002;
+    
+    // Update orbit inclination
+    sceneRef.current.orbit.rotation.z = inclination * Math.PI / 180;
+    
+    // Animate asteroid with smooth motion
     const time = Date.now() * 0.001 * (speed / 10);
-    const radius = 3;
-    const x = Math.cos(time) * radius;
-    const y = Math.sin(time) * Math.sin(inclination * Math.PI / 180) * radius;
-    const z = Math.sin(time) * Math.cos(inclination * Math.PI / 180) * radius;
+    const x = Math.cos(time) * orbitRadius;
+    const y = Math.sin(time) * Math.sin(inclination * Math.PI / 180) * orbitRadius;
+    const z = Math.sin(time) * Math.cos(inclination * Math.PI / 180) * orbitRadius;
     
     asteroid.position.set(x, y, z);
     
-    const scale = asteroidSize / 200;
+    // Scale asteroid based on size
+    const scale = 0.5 + (asteroidSize / 400);
     asteroid.scale.set(scale, scale, scale);
 
-    asteroid.rotation.x = Math.sin(Date.now() * 0.002) * 0.1;
-    asteroid.rotation.y = Math.cos(Date.now() * 0.002) * 0.1;
+    // Rotate asteroid for more natural motion
+    asteroid.rotation.x += 0.02;
+    asteroid.rotation.y += 0.015;
+    asteroid.rotation.z += 0.01;
+
+    // Make asteroid glow pulse
+    const glow = asteroid.children[0];
+    if (glow) {
+      glow.scale.x = 1 + Math.sin(Date.now() * 0.005) * 0.2;
+      glow.scale.y = 1 + Math.sin(Date.now() * 0.005) * 0.2;
+      glow.scale.z = 1 + Math.sin(Date.now() * 0.005) * 0.2;
+    }
 
     renderer.render(scene, camera);
     animationRef.current = requestAnimationFrame(animateAsteroid);
@@ -226,7 +413,6 @@ const OrbitSimulator = () => {
     // Call backend API with current parameters
     const backendResult = await callBackendAPI(speed, mass, 'generic');
     
-    // If backend returns different coordinates, use them
     if (backendResult && backendResult.impact_coordinates) {
       setImpactLat(backendResult.impact_coordinates.lat);
       setImpactLon(backendResult.impact_coordinates.lon);
@@ -265,8 +451,8 @@ const OrbitSimulator = () => {
       if (animationRef.current) {
         cancelAnimationFrame(animationRef.current);
       }
-      if (sceneRef.current && sceneRef.current.cleanupControls) {
-        sceneRef.current.cleanupControls();
+      if (sceneRef.current && sceneRef.current.controls) {
+        sceneRef.current.controls.cleanup();
       }
       window.removeEventListener('resize', handleResize);
     };
@@ -448,7 +634,6 @@ const OrbitSimulator = () => {
               </span>
             </div>
             
-            {/* Backend Data Display */}
             {backendData && (
               <div style={{ 
                 marginTop: '15px',
@@ -464,7 +649,6 @@ const OrbitSimulator = () => {
               </div>
             )}
             
-            {/* Error Display */}
             {error && (
               <div style={{ 
                 marginTop: '10px',
@@ -486,8 +670,8 @@ const OrbitSimulator = () => {
             ref={canvasRef}
             style={{
               width: '100%',
-              height: '300px',
-              background: '#000000',
+              height: '350px',
+              background: '#000011',
               border: '2px solid #ffffff',
               borderRadius: '0px',
               cursor: 'grab'
@@ -500,7 +684,7 @@ const OrbitSimulator = () => {
             fontSize: '0.9rem',
             fontFamily: '"Nova Square", monospace, sans-serif'
           }}>
-            DRAG TO ROTATE • SCROLL TO ZOOM
+            DRAG TO ROTATE • SCROLL TO ZOOM • ENHANCED 3D
           </div>
         </div>
       </div>
@@ -515,7 +699,7 @@ const OrbitSimulator = () => {
         textAlign: 'center',
         fontFamily: '"Nova Square", monospace, sans-serif'
       }}>
-        INTERACTIVE 3D ORBITAL SIMULATION WITH BACKEND API
+        Just a simulation :DD
       </div>
     </div>
   );
@@ -537,7 +721,6 @@ function renderOrbitSimulator() {
   }
 }
 
-// Start the rendering process
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', renderOrbitSimulator);
 } else {
