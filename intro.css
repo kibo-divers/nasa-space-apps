@@ -1,4 +1,5 @@
 /* Intro Styles */
+/* Ensure intro starts at top */
 #intro-container {
   position: fixed;
   top: 0;
@@ -11,11 +12,8 @@
   overflow-y: auto;
   scroll-behavior: smooth;
   transition: opacity 1.5s ease-in-out;
-}
-
-#intro-container.fade-out {
-  opacity: 0;
-  pointer-events: none;
+  /* Force scroll to top */
+  scroll-snap-type: y mandatory;
 }
 
 .intro-panel {
@@ -29,7 +27,15 @@
   opacity: 0;
   transform: translateY(20px);
   transition: opacity 1s ease, transform 1s ease;
+  /* Force panel alignment */
+  scroll-snap-align: start;
 }
+
+#intro-container.fade-out {
+  opacity: 0;
+  pointer-events: none;
+}
+
 
 .intro-panel.active {
   opacity: 1;

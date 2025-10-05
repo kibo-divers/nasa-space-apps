@@ -10,7 +10,7 @@ www.albertohartzet.com
   <meta name="designer" content="Alberto Hartzet">
   <meta name="programmer" content="Alberto Hartzet">
   <meta name="author" content="Alberto Hartzet">
-  <meta name="description" content="SMC Space Apps Challenge">
+  <meta name="description" content="One page navigation with pure CSS">
   <meta property="og:url" content="https://codepen.io/hrtzt/details/NPZKRN">
   <meta property="og:image" content="https://pbs.twimg.com/media/CCNJN_XUMAAJSzU.jpg:large">
 
@@ -18,12 +18,19 @@ www.albertohartzet.com
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.3.0/css/font-awesome.css">
   <link rel="stylesheet" href="./style.css">
   <link rel="stylesheet" href="./intro.css">
+  
+  <!-- React & Three.js CDN Links -->
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <script src="https://unpkg.com/three@0.132.2/build/three.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  
   <script src="https://public.codepenassets.com/js/prefixfree-1.0.7.min.js"></script>
 </head>
 
 <body>
-  <!-- Intro Container -->
-  <div id="intro-container" style="display: none;">
+  <!-- Intro Container - Now part of normal page flow -->
+  <div id="intro-container">
     <!-- Panel 1 -->
     <div class="intro-panel" id="panel-1">
       <h1>Welcome</h1>
@@ -34,30 +41,32 @@ www.albertohartzet.com
     <!-- Panel 2 -->
     <div class="intro-panel" id="panel-2">
       <h1>Discover</h1>
-      <p>Explore new possibilities and <span class="highlight">deez nuyts</span></p>
+      <p>Explore new possibilities and <span class="highlight">unleash your creativity</span></p>
     </div>
     
     <!-- Panel 3 -->
     <div class="intro-panel" id="panel-3">
       <h1>Create</h1>
-      <p>Build something <span class="highlight">SIX SEVEN</span> SIX SEVEN</p>
+      <p>Build something <span class="highlight">amazing</span> with passion and dedication</p>
     </div>
     
     <!-- Panel 4 -->
     <div class="intro-panel" id="panel-4">
       <h1>Connect</h1>
-      <p> bayot <span class="highlight">ako</span></p>
+      <p>Share your work with the world and <span class="highlight">inspire others</span></p>
     </div>
     
     <!-- Panel 5 -->
     <div class="intro-panel" id="panel-5">
       <h1>Begin</h1>
-      <p> ur <span class="highlight">mom </span></p>
+      <p>Your adventure starts <span class="highlight">now</span></p>
+      <div class="scroll-hint">Scroll down to enter the site</div>
     </div>
   </div>
 
   <!-- Main Content -->
   <div id="main-content">
+    <!-- Your existing main content here -->
     <div class="ct" id="t1">
       <div class="ct" id="t2">
         <div class="ct" id="t3">
@@ -86,15 +95,16 @@ www.albertohartzet.com
                 </div>
               </div>
 
-              <!-- Page 2 -->
+              <!-- Page 2 - Updated for Orbit Simulator -->
               <div class="page" id="p2">
                 <div class="centered-content">
                   <section class="icon fa fa-keyboard-o">
-                    <span class="title">Type</span>
+                    <span class="title">Orbit Simulator</span>
+                    <div id="orbit-simulator-root"></div>
                   </section>
                 </div>
               </div>
-
+              
               <!-- Page 3 -->
               <div class="page" id="p3">
                 <div class="centered-content">
@@ -144,7 +154,25 @@ www.albertohartzet.com
     </div>
   </div>
 
+  <!-- Your existing scripts -->
   <script src="./script.js"></script>
   <script src="./intro.js"></script>
+  
+  <!-- Orbit Simulator - Load after DOM is ready -->
+  <script type="text/babel">
+    // Wait for DOM to be fully loaded
+    document.addEventListener('DOMContentLoaded', function() {
+      // Small delay to ensure everything is ready
+      setTimeout(() => {
+        if (document.getElementById('orbit-simulator-root')) {
+          ReactDOM.render(<OrbitSimulator />, document.getElementById('orbit-simulator-root'));
+        }
+      }, 100);
+    });
+  </script>
+</body>
+  
+  <!-- Orbit Simulator React Component -->
+  <script type="text/babel" src="./orbit-simulator.js"></script>
 </body>
 </html>

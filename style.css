@@ -207,3 +207,46 @@ a {
   transform: translateY(-20px);
   transition-delay: 0s;
 }
+
+/* Orbit Simulator - Smaller Size */
+#orbit-simulator-root {
+  width: 100%;
+  max-width: 600px;
+  margin: 0 auto;
+  transform: scale(0.9);
+  transform-origin: top center;
+}
+
+#orbit-simulator-root input[type="range"] {
+  height: 4px;
+  background: #ddd;
+  border-radius: 4px;
+  outline: none;
+}
+
+#orbit-simulator-root input[type="range"]::-webkit-slider-thumb {
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  background: #ff6b6b;
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+#orbit-simulator-root input[type="range"]::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  background: #ff6b6b;
+  border-radius: 50%;
+  cursor: pointer;
+  border: none;
+}
+
+/* Make sure it fits in the page layout */
+.page #p2 .centered-content {
+  padding: 10px;
+}
+
+.page #p2 section {
+  max-width: 100%;
+}

@@ -1,11 +1,8 @@
-// Intro functionality
+// Intro functionality - Always plays on refresh
 document.addEventListener('DOMContentLoaded', function() {
-  // Check if user has already seen the intro
-  if (localStorage.getItem('introSeen')) {
-    skipIntro();
-    return;
-  }
-
+  // Reset scroll position to top
+  window.scrollTo(0, 0);
+  
   // Initialize intro
   initIntro();
 });
@@ -15,8 +12,9 @@ function initIntro() {
   const panels = document.querySelectorAll('.intro-panel');
   const mainContent = document.getElementById('main-content');
   
-  // Show the intro container
+  // Show the intro container and ensure it's at top
   introContainer.style.display = 'block';
+  window.scrollTo(0, 0);
   
   // Intersection Observer for panel animations
   const observer = new IntersectionObserver((entries) => {
@@ -64,9 +62,6 @@ function completeIntro() {
   const introContainer = document.getElementById('intro-container');
   const mainContent = document.getElementById('main-content');
   
-  // Mark intro as seen
-  localStorage.setItem('introSeen', 'true');
-  
   // Fade out intro
   introContainer.classList.add('fade-out');
   
@@ -75,41 +70,19 @@ function completeIntro() {
     mainContent.classList.add('fade-in');
     introContainer.style.display = 'none';
     
-    // Reset scroll position
+    // Reset scroll position for main content
     window.scrollTo(0, 0);
   }, 1500);
 }
 
-function skipIntro() {
-  const introContainer = document.getElementById('intro-container');
-  const mainContent = document.getElementById('main-content');
-  
-  introContainer.style.display = 'none';
-  mainContent.classList.add('fade-in');
-}
+// Additional safety: Reset scroll on page load
+window.addEventListener('load', function() {
+  window.scrollTo(0, 0);
+});
 
-// Add this function to intro.js
-function addResetButton() {
-  const resetBtn = document.createElement('button');
-  resetBtn.textContent = 'Reset Intro';
-  resetBtn.style.position = 'fixed';
-  resetBtn.style.bottom = '10px';
-  resetBtn.style.right = '10px';
-  resetBtn.style.zIndex = '10000';
-  resetBtn.style.padding = '5px 10px';
-  resetBtn.style.background = '#333';
-  resetBtn.style.color = 'white';
-  resetBtn.style.border = 'none';
-  resetBtn.style.borderRadius = '3px';
-  resetBtn.style.cursor = 'pointer';
-  
-  resetBtn.addEventListener('click', function() {
-    localStorage.removeItem('introSeen');
-    alert('Intro has been reset. Refresh the page to see it again.');
-  });
-  
-  document.body.appendChild(resetBtn);
-}
-
-// Call this function at the end of your intro.js file
-addResetButton();
+// Reset scroll when navigating back to page
+window.addEventListener('pageshow', function(event) {
+  if (event.persisted) {
+    window.scrollTo(0, 0);
+  }
+});
