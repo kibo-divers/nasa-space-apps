@@ -7,21 +7,64 @@ const OrbitSimulator = () => {
   const [impactLat, setImpactLat] = useState('--');
   const [impactLon, setImpactLon] = useState('--');
   const [energy, setEnergy] = useState('--');
+  const [backendData, setBackendData] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
   
   const canvasRef = useRef(null);
   const sceneRef = useRef(null);
   const animationRef = useRef(null);
 
-  // Calculate impact energy
-  const calculateEnergy = (size, velocity) => {
-    const density = 3000;
+  // Calculate mass from asteroid size (assuming density of 3000 kg/m³)
+  const calculateMass = (size) => {
+    const density = 3000; // kg/m³
     const radius = size / 2;
     const volume = (4/3) * Math.PI * Math.pow(radius, 3);
-    const mass = density * volume;
+    return density * volume;
+  };
+
+  // Calculate impact energy
+  const calculateEnergy = (size, velocity) => {
+    const mass = calculateMass(size);
     const energyJoules = 0.5 * mass * Math.pow(velocity * 1000, 2);
     const energyTNT = energyJoules / (4.184 * 1e9);
-    
     return energyTNT.toFixed(2) + ' MT';
+  };
+
+  // Call backend API
+  const callBackendAPI = async (velocity, mass, meteorType = 'generic') => {
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const response = await fetch('http://127.0.0.1:5000/get_data', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          "velocity": velocity,
+          "mass": mass,
+          "type_meteor": meteorType
+        }),
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      console.log('Backend Success:', data);
+      setBackendData(data);
+      return data;
+      
+    } catch (error) {
+      console.error('Backend Error:', error);
+      setError('Failed to connect to simulation server');
+      return null;
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Simple orbit controls
@@ -32,6 +75,7 @@ const OrbitSimulator = () => {
     const onMouseDown = (event) => {
       isDragging = true;
       previousMousePosition = { x: event.clientX, y: event.clientY };
+      canvas.style.cursor = 'grabbing';
     };
     
     const onMouseMove = (event) => {
@@ -40,11 +84,8 @@ const OrbitSimulator = () => {
       const deltaX = event.clientX - previousMousePosition.x;
       const deltaY = event.clientY - previousMousePosition.y;
       
-      // Rotate camera around the scene
       camera.rotation.y += deltaX * 0.01;
       camera.rotation.x += deltaY * 0.01;
-      
-      // Limit vertical rotation
       camera.rotation.x = Math.max(-Math.PI/2, Math.min(Math.PI/2, camera.rotation.x));
       
       previousMousePosition = { x: event.clientX, y: event.clientY };
@@ -52,12 +93,11 @@ const OrbitSimulator = () => {
     
     const onMouseUp = () => {
       isDragging = false;
+      canvas.style.cursor = 'grab';
     };
     
     const onWheel = (event) => {
-      // Zoom in/out
       camera.position.z += event.deltaY * 0.01;
-      // Limit zoom
       camera.position.z = Math.max(3, Math.min(15, camera.position.z));
     };
     
@@ -66,7 +106,6 @@ const OrbitSimulator = () => {
     canvas.addEventListener('mouseup', onMouseUp);
     canvas.addEventListener('wheel', onWheel);
     
-    // Return cleanup function
     return () => {
       canvas.removeEventListener('mousedown', onMouseDown);
       canvas.removeEventListener('mousemove', onMouseMove);
@@ -77,10 +116,7 @@ const OrbitSimulator = () => {
 
   // Initialize Three.js scene
   const initScene = () => {
-    if (!canvasRef.current) {
-      console.log('Canvas ref not ready');
-      return;
-    }
+    if (!canvasRef.current) return;
 
     try {
       const scene = new THREE.Scene();
@@ -129,10 +165,8 @@ const OrbitSimulator = () => {
       const asteroid = new THREE.Mesh(asteroidGeometry, asteroidMaterial);
       scene.add(asteroid);
 
-      // Position camera
       camera.position.z = 6;
 
-      // Set up orbit controls
       const cleanupControls = setupOrbitControls(camera, renderer.domElement);
 
       sceneRef.current = { 
@@ -146,7 +180,6 @@ const OrbitSimulator = () => {
       };
       
       animateAsteroid();
-      console.log('Scene initialized successfully with controls');
     } catch (error) {
       console.error('Error initializing scene:', error);
     }
@@ -158,7 +191,6 @@ const OrbitSimulator = () => {
 
     const { scene, camera, renderer, asteroid, orbit } = sceneRef.current;
     
-    // Update orbit inclination
     orbit.rotation.z = inclination * Math.PI / 180;
     
     const time = Date.now() * 0.001 * (speed / 10);
@@ -180,13 +212,25 @@ const OrbitSimulator = () => {
   };
 
   // Run orbit simulation
-  const runOrbit = () => {
+  const runOrbit = async () => {
     const lat = (Math.random() * 180 - 90).toFixed(2);
     const lon = (Math.random() * 360 - 180).toFixed(2);
     
     setImpactLat(lat);
     setImpactLon(lon);
-    setEnergy(calculateEnergy(asteroidSize, speed));
+    
+    const mass = calculateMass(asteroidSize);
+    const energyValue = calculateEnergy(asteroidSize, speed);
+    setEnergy(energyValue);
+    
+    // Call backend API with current parameters
+    const backendResult = await callBackendAPI(speed, mass, 'generic');
+    
+    // If backend returns different coordinates, use them
+    if (backendResult && backendResult.impact_coordinates) {
+      setImpactLat(backendResult.impact_coordinates.lat);
+      setImpactLon(backendResult.impact_coordinates.lon);
+    }
     
     if (animationRef.current) {
       cancelAnimationFrame(animationRef.current);
@@ -345,31 +389,37 @@ const OrbitSimulator = () => {
           
           <button
             onClick={runOrbit}
+            disabled={loading}
             style={{
               width: '100%',
               padding: '12px',
-              background: '#000000',
+              background: loading ? '#333333' : '#000000',
               color: '#ffffff',
               border: '2px solid #ffffff',
               borderRadius: '0px',
               fontSize: '1.1rem',
-              cursor: 'pointer',
+              cursor: loading ? 'not-allowed' : 'pointer',
               fontWeight: 'normal',
               fontFamily: '"Nova Square", monospace, sans-serif',
               letterSpacing: '1px',
               textTransform: 'uppercase',
-              marginBottom: '20px'
+              marginBottom: '20px',
+              opacity: loading ? 0.7 : 1
             }}
             onMouseOver={(e) => {
-              e.target.style.background = '#ffffff';
-              e.target.style.color = '#000000';
+              if (!loading) {
+                e.target.style.background = '#ffffff';
+                e.target.style.color = '#000000';
+              }
             }}
             onMouseOut={(e) => {
-              e.target.style.background = '#000000';
-              e.target.style.color = '#ffffff';
+              if (!loading) {
+                e.target.style.background = '#000000';
+                e.target.style.color = '#ffffff';
+              }
             }}
           >
-            RUN SIMULATION
+            {loading ? 'CALCULATING...' : 'RUN SIMULATION'}
           </button>
           
           {/* Results Display */}
@@ -389,7 +439,7 @@ const OrbitSimulator = () => {
                 {impactLat}° / {impactLon}°
               </span>
             </div>
-            <div>
+            <div style={{ marginBottom: '10px' }}>
               <strong style={{fontFamily: '"Nova Square", monospace, sans-serif'}}>
                 ENERGY:
               </strong><br />
@@ -397,6 +447,36 @@ const OrbitSimulator = () => {
                 {energy} TNT
               </span>
             </div>
+            
+            {/* Backend Data Display */}
+            {backendData && (
+              <div style={{ 
+                marginTop: '15px',
+                paddingTop: '15px',
+                borderTop: '1px solid #333'
+              }}>
+                <strong style={{fontFamily: '"Nova Square", monospace, sans-serif'}}>
+                  BACKEND DATA:
+                </strong><br />
+                <div style={{ fontSize: '0.8rem', color: '#cccccc' }}>
+                  {JSON.stringify(backendData, null, 2)}
+                </div>
+              </div>
+            )}
+            
+            {/* Error Display */}
+            {error && (
+              <div style={{ 
+                marginTop: '10px',
+                padding: '8px',
+                background: '#330000',
+                border: '1px solid #ff2222',
+                fontSize: '0.8rem',
+                color: '#ff6666'
+              }}>
+                {error}
+              </div>
+            )}
           </div>
         </div>
         
@@ -435,7 +515,7 @@ const OrbitSimulator = () => {
         textAlign: 'center',
         fontFamily: '"Nova Square", monospace, sans-serif'
       }}>
-        INTERACTIVE 3D ORBITAL SIMULATION
+        INTERACTIVE 3D ORBITAL SIMULATION WITH BACKEND API
       </div>
     </div>
   );
@@ -448,7 +528,6 @@ function renderOrbitSimulator() {
   if (rootElement && window.React && window.ReactDOM) {
     try {
       ReactDOM.render(React.createElement(OrbitSimulator), rootElement);
-      console.log('Orbit simulator rendered successfully');
     } catch (error) {
       console.error('Error rendering orbit simulator:', error);
       setTimeout(renderOrbitSimulator, 500);
