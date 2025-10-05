@@ -4,6 +4,7 @@ const OrbitSimulator = () => {
   const [asteroidSize, setAsteroidSize] = useState(100);
   const [speed, setSpeed] = useState(20);
   const [inclination, setInclination] = useState(45);
+  const [year, setYear] = useState(1950); // Default year
   const [impactLat, setImpactLat] = useState('--');
   const [impactLon, setImpactLon] = useState('--');
   const [energy, setEnergy] = useState('--');
@@ -16,12 +17,16 @@ const OrbitSimulator = () => {
   const animationRef = useRef(null);
 
   // Calculate mass from asteroid size
-  const calculateMass = (size) => {
-    const density = 3000;
-    const radius = size / 2;
-    const volume = (4/3) * Math.PI * Math.pow(radius, 3);
-    return density * volume;
-  };
+// Calculate mass from asteroid size with validation
+const calculateMass = (size) => {
+  const density = 3000;
+  const radius = size / 2;
+  const volume = (4/3) * Math.PI * Math.pow(radius, 3);
+  const mass = density * volume;
+  
+  console.log('Mass calculation:', { size, radius, volume, mass });
+  return mass;
+};
 
   // Calculate impact energy
   const calculateEnergy = (size, velocity) => {
@@ -31,26 +36,38 @@ const OrbitSimulator = () => {
     return energyTNT.toFixed(2) + ' MT';
   };
 
-  // Call backend API
-  const callBackendAPI = async (velocity, mass, meteorType = 'generic') => {
+  // Call backend API with year parameter
+// Call backend API with proper data types
+  const callBackendAPI = async (velocity, mass, meteorType = 'generic', impactYear = 1950) => {
     setLoading(true);
     setError(null);
     
     try {
+      // Ensure proper data types
+      const requestData = {
+        "velocity": Number(velocity),  // Ensure it's a number
+        "grams": Number(mass),          // Ensure it's a number
+        "recclass": String(meteorType),
+        "year": Number(impactYear)     // Ensure it's a number
+      };
+
+      console.log('Sending to backend:', requestData);
+
       const response = await fetch('http://127.0.0.1:5000/get_data', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          "velocity": velocity,
-          "mass": mass,
-          "type_meteor": meteorType
-        }),
+        body: JSON.stringify(requestData),
       });
       
+      console.log('Response status:', response.status);
+      
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        // Get more detailed error info
+        const errorText = await response.text();
+        console.error('Backend error details:', errorText);
+        throw new Error(`HTTP error! status: ${response.status}. Details: ${errorText}`);
       }
       
       const data = await response.json();
@@ -60,7 +77,7 @@ const OrbitSimulator = () => {
       
     } catch (error) {
       console.error('Backend Error:', error);
-      setError('Failed to connect to simulation server');
+      setError(`Server error: ${error.message}`);
       return null;
     } finally {
       setLoading(false);
@@ -69,24 +86,21 @@ const OrbitSimulator = () => {
 
   // Create realistic Earth material
   const createEarthMaterial = () => {
-    // Create a simple blue-green gradient material
     const canvas = document.createElement('canvas');
     canvas.width = 512;
     canvas.height = 256;
     const context = canvas.getContext('2d');
     
-    // Create Earth-like texture
     const gradient = context.createLinearGradient(0, 0, canvas.width, canvas.height);
-    gradient.addColorStop(0, '#1a5276');  // Deep ocean
-    gradient.addColorStop(0.3, '#2980b9'); // Ocean
-    gradient.addColorStop(0.5, '#27ae60'); // Land
-    gradient.addColorStop(0.7, '#229954'); // Forest
-    gradient.addColorStop(1, '#1d8348');  // Dark land
+    gradient.addColorStop(0, '#1a5276');
+    gradient.addColorStop(0.3, '#2980b9');
+    gradient.addColorStop(0.5, '#27ae60');
+    gradient.addColorStop(0.7, '#229954');
+    gradient.addColorStop(1, '#1d8348');
     
     context.fillStyle = gradient;
     context.fillRect(0, 0, canvas.width, canvas.height);
     
-    // Add some cloud-like patterns
     context.fillStyle = 'rgba(255, 255, 255, 0.3)';
     for (let i = 0; i < 20; i++) {
       const x = Math.random() * canvas.width;
@@ -112,11 +126,9 @@ const OrbitSimulator = () => {
     canvas.height = 256;
     const context = canvas.getContext('2d');
     
-    // Rocky asteroid texture
     context.fillStyle = '#8B4513';
     context.fillRect(0, 0, canvas.width, canvas.height);
     
-    // Add crater-like details
     context.fillStyle = '#654321';
     for (let i = 0; i < 50; i++) {
       const x = Math.random() * canvas.width;
@@ -178,7 +190,6 @@ const OrbitSimulator = () => {
     canvas.addEventListener('mouseup', onMouseUp);
     canvas.addEventListener('wheel', onWheel);
     
-    // Smooth rotation update in animation loop
     const updateRotation = () => {
       const damping = 0.1;
       currentRotation.x += (targetRotation.x - currentRotation.x) * damping;
@@ -217,7 +228,6 @@ const OrbitSimulator = () => {
       canvasRef.current.innerHTML = '';
       canvasRef.current.appendChild(renderer.domElement);
 
-      // Enhanced lighting
       const ambientLight = new THREE.AmbientLight(0x333333, 0.4);
       scene.add(ambientLight);
       
@@ -232,17 +242,14 @@ const OrbitSimulator = () => {
       fillLight.position.set(-5, -5, -5);
       scene.add(fillLight);
 
-      // Create enhanced Earth
       const earthGeometry = new THREE.SphereGeometry(2, 64, 64);
       const earth = new THREE.Mesh(earthGeometry, createEarthMaterial());
       earth.castShadow = true;
       earth.receiveShadow = true;
       scene.add(earth);
 
-      // Create detailed orbit path with glow effect
       const orbitGroup = new THREE.Group();
       
-      // Main orbit line
       const orbitPoints = [];
       const orbitRadius = 4;
       for (let i = 0; i <= 128; i++) {
@@ -262,7 +269,6 @@ const OrbitSimulator = () => {
       const orbit = new THREE.Line(orbitGeometry, orbitMaterial);
       orbitGroup.add(orbit);
       
-      // Dashed guide orbit
       const dashedOrbitMaterial = new THREE.LineDashedMaterial({
         color: 0x888888,
         dashSize: 0.2,
@@ -276,9 +282,7 @@ const OrbitSimulator = () => {
       
       scene.add(orbitGroup);
 
-      // Create detailed asteroid with irregular shape
       const asteroidGeometry = new THREE.SphereGeometry(0.2, 32, 32);
-      // Make asteroid irregular
       const positions = asteroidGeometry.attributes.position.array;
       for (let i = 0; i < positions.length; i += 3) {
         const variation = 0.1;
@@ -293,7 +297,6 @@ const OrbitSimulator = () => {
       asteroid.castShadow = true;
       asteroid.receiveShadow = true;
       
-      // Add asteroid glow/trail
       const asteroidGlowGeometry = new THREE.SphereGeometry(0.25, 16, 16);
       const asteroidGlowMaterial = new THREE.MeshBasicMaterial({
         color: 0xff4422,
@@ -305,7 +308,6 @@ const OrbitSimulator = () => {
       
       scene.add(asteroid);
 
-      // Add stars background
       const starsGeometry = new THREE.BufferGeometry();
       const starsMaterial = new THREE.PointsMaterial({
         color: 0xffffff,
@@ -358,18 +360,14 @@ const OrbitSimulator = () => {
 
     const { scene, camera, renderer, earth, asteroid, controls, orbitRadius } = sceneRef.current;
     
-    // Update controls
     if (controls && controls.updateRotation) {
       controls.updateRotation();
     }
     
-    // Rotate Earth slowly
     earth.rotation.y += 0.002;
     
-    // Update orbit inclination
     sceneRef.current.orbit.rotation.z = inclination * Math.PI / 180;
     
-    // Animate asteroid with smooth motion
     const time = Date.now() * 0.001 * (speed / 10);
     const x = Math.cos(time) * orbitRadius;
     const y = Math.sin(time) * Math.sin(inclination * Math.PI / 180) * orbitRadius;
@@ -377,16 +375,13 @@ const OrbitSimulator = () => {
     
     asteroid.position.set(x, y, z);
     
-    // Scale asteroid based on size
     const scale = 0.5 + (asteroidSize / 400);
     asteroid.scale.set(scale, scale, scale);
 
-    // Rotate asteroid for more natural motion
     asteroid.rotation.x += 0.02;
     asteroid.rotation.y += 0.015;
     asteroid.rotation.z += 0.01;
 
-    // Make asteroid glow pulse
     const glow = asteroid.children[0];
     if (glow) {
       glow.scale.x = 1 + Math.sin(Date.now() * 0.005) * 0.2;
@@ -398,7 +393,7 @@ const OrbitSimulator = () => {
     animationRef.current = requestAnimationFrame(animateAsteroid);
   };
 
-  // Run orbit simulation
+  // Run orbit simulation with year parameter
   const runOrbit = async () => {
     const lat = (Math.random() * 180 - 90).toFixed(2);
     const lon = (Math.random() * 360 - 180).toFixed(2);
@@ -410,8 +405,8 @@ const OrbitSimulator = () => {
     const energyValue = calculateEnergy(asteroidSize, speed);
     setEnergy(energyValue);
     
-    // Call backend API with current parameters
-    const backendResult = await callBackendAPI(speed, mass, 'generic');
+    // Call backend API with year parameter
+    const backendResult = await callBackendAPI(speed, mass, 'generic', year);
     
     if (backendResult && backendResult.impact_coordinates) {
       setImpactLat(backendResult.impact_coordinates.lat);
@@ -422,6 +417,13 @@ const OrbitSimulator = () => {
       cancelAnimationFrame(animationRef.current);
     }
     animateAsteroid();
+  };
+
+  // Get historical context for the selected year
+  const getHistoricalContext = (year) => {
+    if (year < 1900) return "Pre-modern era";
+    if (year < 1950) return "Early modern era";
+    return "Modern era";
   };
 
   // Initialize scene when component mounts and canvas is ready
@@ -482,8 +484,16 @@ const OrbitSimulator = () => {
           letterSpacing: '2px',
           textTransform: 'uppercase'
         }}>
-          ASTEROID IMPACT SIMULATOR
+          HISTORICAL ASTEROID IMPACT SIMULATOR
         </h2>
+        <div style={{ 
+          color: '#cccccc',
+          fontSize: '1rem',
+          marginTop: '5px',
+          fontFamily: '"Nova Square", monospace, sans-serif'
+        }}>
+          SIMULATE IMPACTS FROM 1600-2000
+        </div>
       </div>
       
       {/* Main Content */}
@@ -548,7 +558,7 @@ const OrbitSimulator = () => {
             />
           </div>
           
-          <div style={{ marginBottom: '20px' }}>
+          <div style={{ marginBottom: '15px' }}>
             <label style={{ 
               display: 'block', 
               marginBottom: '8px', 
@@ -571,6 +581,50 @@ const OrbitSimulator = () => {
                 height: '6px'
               }}
             />
+          </div>
+          
+          {/* Year Input */}
+          <div style={{ marginBottom: '20px' }}>
+            <label style={{ 
+              display: 'block', 
+              marginBottom: '8px', 
+              color: '#ffffff',
+              fontFamily: '"Nova Square", monospace, sans-serif',
+              fontSize: '1.1rem'
+            }}>
+              YEAR: {year}
+              <span style={{ 
+                fontSize: '0.8rem', 
+                color: '#cccccc',
+                marginLeft: '10px'
+              }}>
+                {getHistoricalContext(year)}
+              </span>
+            </label>
+            <input
+              type="range"
+              min="1600"
+              max="2000"
+              value={year}
+              onChange={(e) => setYear(parseInt(e.target.value))}
+              style={{ 
+                width: '100%',
+                border: '1px solid #ffffff',
+                background: '#333333',
+                height: '6px'
+              }}
+            />
+            <div style={{ 
+              display: 'flex', 
+              justifyContent: 'space-between',
+              fontSize: '0.8rem',
+              color: '#888888',
+              marginTop: '5px'
+            }}>
+              <span>1600</span>
+              <span>1800</span>
+              <span>2000</span>
+            </div>
           </div>
           
           <button
@@ -605,7 +659,7 @@ const OrbitSimulator = () => {
               }
             }}
           >
-            {loading ? 'CALCULATING...' : 'RUN SIMULATION'}
+            {loading ? 'CALCULATING...' : `SIMULATE ${year}`}
           </button>
           
           {/* Results Display */}
@@ -619,7 +673,12 @@ const OrbitSimulator = () => {
           }}>
             <div style={{ marginBottom: '10px' }}>
               <strong style={{fontFamily: '"Nova Square", monospace, sans-serif'}}>
-                IMPACT:
+                IMPACT YEAR: {year}
+              </strong>
+            </div>
+            <div style={{ marginBottom: '10px' }}>
+              <strong style={{fontFamily: '"Nova Square", monospace, sans-serif'}}>
+                LOCATION:
               </strong><br />
               <span style={{color: '#ff2222'}}>
                 {impactLat}° / {impactLon}°
@@ -641,7 +700,7 @@ const OrbitSimulator = () => {
                 borderTop: '1px solid #333'
               }}>
                 <strong style={{fontFamily: '"Nova Square", monospace, sans-serif'}}>
-                  BACKEND DATA:
+                  HISTORICAL ANALYSIS:
                 </strong><br />
                 <div style={{ fontSize: '0.8rem', color: '#cccccc' }}>
                   {JSON.stringify(backendData, null, 2)}
@@ -684,7 +743,7 @@ const OrbitSimulator = () => {
             fontSize: '0.9rem',
             fontFamily: '"Nova Square", monospace, sans-serif'
           }}>
-            DRAG TO ROTATE • SCROLL TO ZOOM • ENHANCED 3D
+            DRAG TO ROTATE • SCROLL TO ZOOM • YEAR: {year}
           </div>
         </div>
       </div>
@@ -699,7 +758,7 @@ const OrbitSimulator = () => {
         textAlign: 'center',
         fontFamily: '"Nova Square", monospace, sans-serif'
       }}>
-        Just a simulation :DD
+        HISTORICAL IMPACT SIMULATION • YEARS 1600-2000
       </div>
     </div>
   );
