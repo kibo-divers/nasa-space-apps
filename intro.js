@@ -87,3 +87,29 @@ function skipIntro() {
   introContainer.style.display = 'none';
   mainContent.classList.add('fade-in');
 }
+
+// Add this function to intro.js
+function addResetButton() {
+  const resetBtn = document.createElement('button');
+  resetBtn.textContent = 'Reset Intro';
+  resetBtn.style.position = 'fixed';
+  resetBtn.style.bottom = '10px';
+  resetBtn.style.right = '10px';
+  resetBtn.style.zIndex = '10000';
+  resetBtn.style.padding = '5px 10px';
+  resetBtn.style.background = '#333';
+  resetBtn.style.color = 'white';
+  resetBtn.style.border = 'none';
+  resetBtn.style.borderRadius = '3px';
+  resetBtn.style.cursor = 'pointer';
+  
+  resetBtn.addEventListener('click', function() {
+    localStorage.removeItem('introSeen');
+    alert('Intro has been reset. Refresh the page to see it again.');
+  });
+  
+  document.body.appendChild(resetBtn);
+}
+
+// Call this function at the end of your intro.js file
+addResetButton();
