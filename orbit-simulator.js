@@ -4,7 +4,7 @@ const OrbitSimulator = () => {
   const [asteroidSize, setAsteroidSize] = useState(100);
   const [speed, setSpeed] = useState(20);
   const [inclination, setInclination] = useState(45);
-  const [year, setYear] = useState(1950); // Default year
+  const [year, setYear] = useState(1950);
   const [impactLat, setImpactLat] = useState('--');
   const [impactLon, setImpactLon] = useState('--');
   const [energy, setEnergy] = useState('--');
@@ -17,16 +17,15 @@ const OrbitSimulator = () => {
   const animationRef = useRef(null);
 
   // Calculate mass from asteroid size
-// Calculate mass from asteroid size with validation
-const calculateMass = (size) => {
-  const density = 3000;
-  const radius = size / 2;
-  const volume = (4/3) * Math.PI * Math.pow(radius, 3);
-  const mass = density * volume;
-  
-  console.log('Mass calculation:', { size, radius, volume, mass });
-  return mass;
-};
+  const calculateMass = (size) => {
+    const density = 3000;
+    const radius = size / 2;
+    const volume = (4/3) * Math.PI * Math.pow(radius, 3);
+    const mass = density * volume;
+    
+    console.log('Mass calculation:', { size, radius, volume, mass });
+    return mass;
+  };
 
   // Calculate impact energy
   const calculateEnergy = (size, velocity) => {
@@ -36,54 +35,200 @@ const calculateMass = (size) => {
     return energyTNT.toFixed(2) + ' MT';
   };
 
-  // Call backend API with year parameter
-// Call backend API with proper data types
-// Call backend API with proper data types
-const callBackendAPI = async (velocity, mass, meteorType = 'generic', impactYear = 1950) => {
-  setLoading(true);
-  setError(null);
-  
-  try {
-    // Ensure proper data types - JavaScript doesn't have float(), int(), str() functions
-    const requestData = {
-      velocity: parseFloat(velocity) || 0,
-      mass: parseFloat(mass) || 0,
-      type_meteor: String(meteorType || 'H5'),
-      year: parseInt(impactYear) || 1950  // Ensure it's a number
-    };
-
-    console.log('Sending to backend:', requestData);
-
-    const response = await fetch('https://fuck-3-qvoh.onrender.com/predict', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(requestData),
-    });
+  // Call backend API with proper data types
+  const callBackendAPI = async (velocity, mass, meteorType = 'generic', impactYear = 1950) => {
+    setLoading(true);
+    setError(null);
+    setBackendData(null); // Clear previous data
     
-    console.log('Response status:', response.status);
-    
-    if (!response.ok) {
-      // Get more detailed error info
-      const errorText = await response.text();
-      console.error('Backend error details:', errorText);
-      throw new Error(`HTTP error! status: ${response.status}. Details: ${errorText}`);
+    try {
+      // Ensure proper data types - JavaScript doesn't have float(), int(), str() functions
+      const requestData = {
+        velocity: parseFloat(velocity) || 0,
+        mass: parseFloat(mass) || 0,
+        type_meteor: String(meteorType || 'H5'),
+        year: parseInt(impactYear) || 1950
+      };
+
+      console.log('Sending to backend:', requestData);
+
+      const response = await fetch('https://fuck-3-qvoh.onrender.com/predict', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestData),
+      });
+      
+      console.log('Response status:', response.status);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Backend error details:', errorText);
+        throw new Error(`HTTP error! status: ${response.status}. Details: ${errorText}`);
+      }
+      
+      const data = await response.json();
+      console.log('Backend Success:', data);
+      setBackendData(data);
+      return data;
+      
+    } catch (error) {
+      console.error('Backend Error:', error);
+      setError(`Server error: ${error.message}`);
+      return null;
+    } finally {
+      setLoading(false);
     }
-    
-    const data = await response.json();
-    console.log('Backend Success:', data);
-    setBackendData(data);
-    return data;
-    
-  } catch (error) {
-    console.error('Backend Error:', error);
-    setError(`Server error: ${error.message}`);
-    return null;
-  } finally {
-    setLoading(false);
-  }
-};
+  };
+
+  // Format backend data for better display
+  const formatBackendData = (data) => {
+    if (!data) return null;
+
+    return (
+      <div style={{ 
+        marginTop: '15px',
+        padding: '12px',
+        background: '#1a1a1a',
+        border: '1px solid #333',
+        borderRadius: '4px',
+        fontSize: '0.85rem'
+      }}>
+        <div style={{ 
+          display: 'flex', 
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: '10px',
+          paddingBottom: '8px',
+          borderBottom: '1px solid #333'
+        }}>
+          <strong style={{ 
+            color: '#4fc3f7',
+            fontSize: '0.9rem'
+          }}>
+            HISTORICAL ANALYSIS
+          </strong>
+          <span style={{ 
+            color: '#81c784',
+            fontSize: '0.75rem',
+            background: '#1b5e20',
+            padding: '2px 6px',
+            borderRadius: '3px'
+          }}>
+            {year}
+          </span>
+        </div>
+
+        {/* Impact Coordinates */}
+        {data.impact_coordinates && (
+          <div style={{ marginBottom: '8px' }}>
+            <div style={{ color: '#ff9800', marginBottom: '4px' }}>
+              <strong>IMPACT COORDINATES:</strong>
+            </div>
+            <div style={{ display: 'flex', gap: '15px', fontSize: '0.8rem' }}>
+              <span>Lat: <span style={{ color: '#ff5252' }}>{data.impact_coordinates.lat}°</span></span>
+              <span>Lon: <span style={{ color: '#ff5252' }}>{data.impact_coordinates.lon}°</span></span>
+            </div>
+          </div>
+        )}
+
+        {/* Impact Probability */}
+        {data.impact_probability !== undefined && (
+          <div style={{ marginBottom: '8px' }}>
+            <div style={{ color: '#4fc3f7', marginBottom: '4px' }}>
+              <strong>IMPACT PROBABILITY:</strong>
+            </div>
+            <div style={{ 
+              background: 'linear-gradient(90deg, #f44336, #4caf50)',
+              height: '8px',
+              borderRadius: '4px',
+              marginBottom: '4px',
+              overflow: 'hidden'
+            }}>
+              <div 
+                style={{
+                  height: '100%',
+                  width: `${(data.impact_probability * 100).toFixed(1)}%`,
+                  background: '#4caf50',
+                  borderRadius: '4px',
+                  transition: 'width 0.3s ease'
+                }}
+              />
+            </div>
+            <span style={{ color: '#e0e0e0', fontSize: '0.75rem' }}>
+              {(data.impact_probability * 100).toFixed(1)}% chance of impact
+            </span>
+          </div>
+        )}
+
+        {/* Crater Size */}
+        {data.crater_size && (
+          <div style={{ marginBottom: '8px' }}>
+            <div style={{ color: '#ba68c8', marginBottom: '4px' }}>
+              <strong>ESTIMATED CRATER:</strong>
+            </div>
+            <span style={{ color: '#e0e0e0', fontSize: '0.8rem' }}>
+              {typeof data.crater_size === 'number' 
+                ? `${data.crater_size.toFixed(1)} km diameter`
+                : String(data.crater_size)
+              }
+            </span>
+          </div>
+        )}
+
+        {/* Historical Context */}
+        {data.historical_context && (
+          <div style={{ marginBottom: '8px' }}>
+            <div style={{ color: '#ffb74d', marginBottom: '4px' }}>
+              <strong>HISTORICAL CONTEXT:</strong>
+            </div>
+            <div style={{ 
+              color: '#e0e0e0', 
+              fontSize: '0.75rem',
+              fontStyle: 'italic',
+              lineHeight: '1.3'
+            }}>
+              {data.historical_context}
+            </div>
+          </div>
+        )}
+
+        {/* Population Impact */}
+        {data.population_impact && (
+          <div style={{ marginBottom: '8px' }}>
+            <div style={{ color: '#ef5350', marginBottom: '4px' }}>
+              <strong>POPULATION IMPACT:</strong>
+            </div>
+            <span style={{ color: '#e0e0e0', fontSize: '0.8rem' }}>
+              {data.population_impact}
+            </span>
+          </div>
+        )}
+
+        {/* Raw Data for debugging */}
+        <details style={{ marginTop: '10px', borderTop: '1px solid #333', paddingTop: '8px' }}>
+          <summary style={{ 
+            color: '#888', 
+            fontSize: '0.7rem', 
+            cursor: 'pointer',
+            userSelect: 'none'
+          }}>
+            Raw Data
+          </summary>
+          <pre style={{ 
+            color: '#888', 
+            fontSize: '0.6rem',
+            marginTop: '5px',
+            overflow: 'auto',
+            maxHeight: '100px'
+          }}>
+            {JSON.stringify(data, null, 2)}
+          </pre>
+        </details>
+      </div>
+    );
+  };
 
   // Create realistic Earth material
   const createEarthMaterial = () => {
@@ -396,6 +541,13 @@ const callBackendAPI = async (velocity, mass, meteorType = 'generic', impactYear
 
   // Run orbit simulation with year parameter
   const runOrbit = async () => {
+    // Clear previous results immediately
+    setImpactLat('--');
+    setImpactLon('--');
+    setEnergy('--');
+    setBackendData(null);
+    setError(null);
+    
     const lat = (Math.random() * 180 - 90).toFixed(2);
     const lon = (Math.random() * 360 - 180).toFixed(2);
     
@@ -645,7 +797,8 @@ const callBackendAPI = async (velocity, mass, meteorType = 'generic', impactYear
               letterSpacing: '1px',
               textTransform: 'uppercase',
               marginBottom: '20px',
-              opacity: loading ? 0.7 : 1
+              opacity: loading ? 0.7 : 1,
+              transition: 'all 0.2s ease'
             }}
             onMouseOver={(e) => {
               if (!loading) {
@@ -670,7 +823,8 @@ const callBackendAPI = async (velocity, mass, meteorType = 'generic', impactYear
             border: '1px solid #ffffff',
             padding: '15px',
             background: '#111111',
-            fontFamily: '"Nova Square", monospace, sans-serif'
+            fontFamily: '"Nova Square", monospace, sans-serif',
+            minHeight: '200px'
           }}>
             <div style={{ marginBottom: '10px' }}>
               <strong style={{fontFamily: '"Nova Square", monospace, sans-serif'}}>
@@ -694,20 +848,8 @@ const callBackendAPI = async (velocity, mass, meteorType = 'generic', impactYear
               </span>
             </div>
             
-            {backendData && (
-              <div style={{ 
-                marginTop: '15px',
-                paddingTop: '15px',
-                borderTop: '1px solid #333'
-              }}>
-                <strong style={{fontFamily: '"Nova Square", monospace, sans-serif'}}>
-                  HISTORICAL ANALYSIS:
-                </strong><br />
-                <div style={{ fontSize: '0.8rem', color: '#cccccc' }}>
-                  {JSON.stringify(backendData, null, 2)}
-                </div>
-              </div>
-            )}
+            {/* Enhanced Backend Data Display */}
+            {formatBackendData(backendData)}
             
             {error && (
               <div style={{ 
