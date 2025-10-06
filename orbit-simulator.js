@@ -45,10 +45,10 @@ const calculateMass = (size) => {
     try {
       // Ensure proper data types
       const requestData = {
-          "velocity" = float(data.get('velocity', 0)),
-          "mass" = float(data.get('mass', 0)),
-          "type_meteor" = str(data.get('type_meteor', 'H5')),
-          "year" = int(data.get('year', 1950))  // Ensure it's a number
+          "velocity":float(data.get('velocity', 0)),
+          "mass":float(data.get('mass', 0)),
+          "type_meteor":str(data.get('type_meteor', 'H5')),
+          "year":int(data.get('year', 1950))  // Ensure it's a number
       };
 
       console.log('Sending to backend:', requestData);
