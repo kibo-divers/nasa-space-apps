@@ -38,51 +38,52 @@ const calculateMass = (size) => {
 
   // Call backend API with year parameter
 // Call backend API with proper data types
-  const callBackendAPI = async (velocity, mass, meteorType = 'generic', impactYear = 1950) => {
-    setLoading(true);
-    setError(null);
+// Call backend API with proper data types
+const callBackendAPI = async (velocity, mass, meteorType = 'generic', impactYear = 1950) => {
+  setLoading(true);
+  setError(null);
+  
+  try {
+    // Ensure proper data types - JavaScript doesn't have float(), int(), str() functions
+    const requestData = {
+      velocity: parseFloat(velocity) || 0,
+      mass: parseFloat(mass) || 0,
+      type_meteor: String(meteorType || 'H5'),
+      year: parseInt(impactYear) || 1950  // Ensure it's a number
+    };
+
+    console.log('Sending to backend:', requestData);
+
+    const response = await fetch('https://fuck-3-qvoh.onrender.com/predict', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(requestData),
+    });
     
-    try {
-      // Ensure proper data types
-      const requestData = {
-          "velocity":float(data.get('velocity', 0)),
-          "mass":float(data.get('mass', 0)),
-          "type_meteor":str(data.get('type_meteor', 'H5')),
-          "year":int(data.get('year', 1950))  // Ensure it's a number
-      };
-
-      console.log('Sending to backend:', requestData);
-
-      const response = await fetch('https://fuck-3-qvoh.onrender.com/predict', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(requestData),
-      });
-      
-      console.log('Response status:', response.status);
-      
-      if (!response.ok) {
-        // Get more detailed error info
-        const errorText = await response.text();
-        console.error('Backend error details:', errorText);
-        throw new Error(`HTTP error! status: ${response.status}. Details: ${errorText}`);
-      }
-      
-      const data = await response.json();
-      console.log('Backend Success:', data);
-      setBackendData(data);
-      return data;
-      
-    } catch (error) {
-      console.error('Backend Error:', error);
-      setError(`Server error: ${error.message}`);
-      return null;
-    } finally {
-      setLoading(false);
+    console.log('Response status:', response.status);
+    
+    if (!response.ok) {
+      // Get more detailed error info
+      const errorText = await response.text();
+      console.error('Backend error details:', errorText);
+      throw new Error(`HTTP error! status: ${response.status}. Details: ${errorText}`);
     }
-  };
+    
+    const data = await response.json();
+    console.log('Backend Success:', data);
+    setBackendData(data);
+    return data;
+    
+  } catch (error) {
+    console.error('Backend Error:', error);
+    setError(`Server error: ${error.message}`);
+    return null;
+  } finally {
+    setLoading(false);
+  }
+};
 
   // Create realistic Earth material
   const createEarthMaterial = () => {
