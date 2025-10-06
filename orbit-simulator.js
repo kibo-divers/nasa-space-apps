@@ -45,15 +45,15 @@ const calculateMass = (size) => {
     try {
       // Ensure proper data types
       const requestData = {
-        "velocity": Number(velocity),  // Ensure it's a number
-        "grams": Number(mass),          // Ensure it's a number
-        "recclass": String(meteorType),
-        "year": Number(impactYear)     // Ensure it's a number
+          velocity = float(data.get('velocity', 0))
+          mass = float(data.get('mass', 0))
+          meteor_type = str(data.get('type_meteor', 'H5'))
+          year = int(data.get('year', 1950))   // Ensure it's a number
       };
 
       console.log('Sending to backend:', requestData);
 
-      const response = await fetch('http://127.0.0.1:5000/get_data', {
+      const response = await fetch('https://fuck-3-qvoh.onrender.com/predict', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
